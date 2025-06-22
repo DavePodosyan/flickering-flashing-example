@@ -8,6 +8,9 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
+import { SQLiteProvider, type SQLiteDatabase } from 'expo-sqlite';
+import * as FileSystem from 'expo-file-system';
+
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
@@ -48,12 +51,107 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
+  const creatDbIfNotExists = async (db: SQLiteDatabase) => {
+    console.log('Creating database if not exists');
+    console.log(FileSystem.documentDirectory)
+    //drop table film if exists
+    // await db.execAsync(`
+    //   DROP TABLE IF EXISTS films;
+    //   DROP TABLE IF EXISTS frames;
+    // `);
+    await db.execAsync(`
+      PRAGMA journal_mode = 'wal';
+      PRAGMA foreign_keys = ON;
+      CREATE TABLE IF NOT EXISTS films (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        title TEXT NOT NULL,
+        iso INTEGER NOT NULL,
+        camera TEXT,
+        status TEXT NOT NULL DEFAULT 'in-camera',
+        frame_count INTEGER NOT NULL,
+        created_at DATETIME NOT NULL,
+        completed_at DATETIME
+      );
+      CREATE TABLE IF NOT EXISTS frames (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        film_id INTEGER NOT NULL,
+        aperture TEXT NOT NULL,
+        shutter_speed TEXT NOT NULL,
+        frame_no INTEGER NOT NULL,
+        note TEXT,
+        created_at DATETIME NOT NULL,
+        FOREIGN KEY (film_id) REFERENCES films(id) ON DELETE CASCADE
+    );
+    `);
+
+  }
+
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
+      <SQLiteProvider databaseName="rollio.db" onInit={creatDbIfNotExists}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        </Stack>
+      </SQLiteProvider>
+
     </ThemeProvider>
   );
 }
+
+
+
+
+
+// import { Stack } from "expo-router";
+// import { StatusBar } from 'expo-status-bar';
+// import { useFonts } from 'expo-font';
+// import { useEffect } from 'react';
+// import * as SplashScreen from 'expo-splash-screen';
+// import { SQLiteProvider, type SQLiteDatabase } from 'expo-sqlite';
+// import * as FileSystem from 'expo-file-system';
+// import { SafeAreaProvider } from "react-native-safe-area-context";
+
+// SplashScreen.preventAutoHideAsync();
+
+// export default function RootLayout() {
+//   const [loaded, error] = useFonts({
+//     'Lufga-Regular': require('../assets/fonts/Lufga-Regular.ttf'),
+//     'Lufga-Medium': require('../assets/fonts/Lufga-Medium.ttf'),
+//   });
+
+//   useEffect(() => {
+//     if (loaded || error) {
+//       SplashScreen.hideAsync();
+//     }
+//   }, [loaded, error]);
+
+//   if (!loaded && !error) {
+//     return null;
+//   }
+
+
+
+//   return (
+//     <SafeAreaProvider style={{ backgroundColor: '#09090B' }}>
+//       <SQLiteProvider databaseName="rollio.db" onInit={creatDbIfNotExists}>
+//         <Stack
+//           screenOptions={{
+//             headerShown: false,
+//             contentStyle: {
+//               backgroundColor: "#09090B",
+//             }
+//           }}>
+//           <Stack.Screen name="home" />
+//           <Stack.Screen name="film" />
+//           <Stack.Screen name="(modal)/film" options={{ presentation: 'modal', gestureEnabled: false }} />
+//           <Stack.Screen name="(modal)/frame" options={{ presentation: 'modal', gestureEnabled: false }} />
+//           <Stack.Screen name="(modal)/disabled_frame" options={{ presentation: 'modal', gestureEnabled: true }} />
+//         </Stack>
+//         <StatusBar style="light" />
+//       </SQLiteProvider>
+//     </SafeAreaProvider>
+
+//   );
+// }
